@@ -1,0 +1,8 @@
+[package]
+name = "satlight_common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+satlight_macros = { path = "../macros" }
+serde = { version = "1", features = ["derive"], optional = true }

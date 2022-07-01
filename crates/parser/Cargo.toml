@@ -1,0 +1,25 @@
+[package]
+name = "satlight_parser"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+profiling = ["tracy-client", "profiling/profile-with-tracy"]
+
+[dependencies]
+derive_more = { version = "*" }
+lazy_static = "*"
+memchr = "*"
+profiling = { git = "https://github.com/memothelemo/profiling" }
+regex = "1.5.6"
+satlight_ast = { path = "../ast" }
+satlight_common = { path = "../common" }
+smallvec = "1.9.0"
+tracy-client = { git = "https://github.com/memothelemo/rust_tracy_client", optional = true }
+
+[dev-dependencies]
+criterion = "*"
+
+[[bench]]
+name = "sample"
+harness = false

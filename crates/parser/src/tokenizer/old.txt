@@ -1,0 +1,447 @@
+43,920 ns/iter
+lowest 43,493ns/iter
+
+profiling::scope!("Tokenizer::advance_token");
+        let peek = self.cursor.peek();
+        let current = self.cursor.current();
+        macro_rules! symbol {
+            ($self:expr, $ident:ident) => {{
+                let offset = self.cursor.offset;
+                $self.cursor.bump();
+                Ok(Token::new(
+                    TokenType::Symbol(SymbolType::$ident),
+                    Span::new(offset, offset + 1),
+                ))
+            }};
+        }
+        profiling::scope!("Tokenizer::advance_token matching");
+        match current {
+            b'=' => symbol!(self, Equal),
+            b'<' => symbol!(self, LessThan),
+            b'>' => symbol!(self, GreaterThan),
+            b'(' => symbol!(self, OpenParen),
+            b')' => symbol!(self, CloseParen),
+            b'{' => symbol!(self, OpenBrace),
+            b'}' => symbol!(self, CloseBrace),
+            b'[' if matches!(peek, b'=' | b'[') => return self.long_string(),
+            b'[' => symbol!(self, OpenBracket),
+            b';' => symbol!(self, Semicolon),
+            b':' => symbol!(self, Colon),
+            b',' => symbol!(self, Comma),
+            b'.' if peek == b'.' => {
+                self.cursor.bump();
+                if self.cursor.peek() == b'=' {
+                    symbol!(self, DotDotDot)
+                } else {
+                    symbol!(self, DotDot)
+                }
+            }
+            b']' => symbol!(self, CloseBracket),
+
+            b' ' | b'\t' | b'\n' | b'\r' => return self.whitespace(),
+            b'-' if peek == b'-' => return self.comment(),
+
+            b'\'' | b'"' => return self.line_string(),
+
+            b'+' => symbol!(self, Cross),
+            b'-' => symbol!(self, Dash),
+            b'*' => symbol!(self, Star),
+            b'/' => symbol!(self, Slash),
+            b'%' => symbol!(self, Percent),
+            b'^' => symbol!(self, Caret),
+
+            b'#' if peek == b'!' && self.cursor.offset == 0 => return self.shebang(),
+            b'#' => symbol!(self, Hash),
+
+            _ if peek == b'=' => match current {
+                b'=' => {
+                    self.cursor.bump();
+                    symbol!(self, EqualEqual)
+                }
+                b'~' => {
+                    self.cursor.bump();
+                    symbol!(self, TildeEqual)
+                }
+                b'<' => {
+                    self.cursor.bump();
+                    symbol!(self, LessEqual)
+                }
+                b'>' => {
+                    self.cursor.bump();
+                    symbol!(self, GreaterEqual)
+                }
+                _ => unexpected_char!(self),
+            },
+
+            b'_' => return self.identifier(),
+            _ if (current as char).is_ascii_alphabetic() => return self.identifier(),
+
+            b'0' if peek == b'x' => return self.hexadecimal(),
+            _ if (current as char).is_ascii_digit() => return self.number(),
+            b'.' if (peek as char).is_ascii_digit() => return self.number(),
+            b'.' => symbol!(self, Dot),
+
+            0 => Ok(Token::new(
+                TokenType::Eof,
+                Span::new(self.cursor.offset, self.cursor.offset),
+            )),
+            _ => unexpected_char!(self),
+        }
+
+impl<'a> Tokenizer<'a> {
+    #[inline(always)]
+    fn skip_string_sep(&mut self) -> Option<usize> {
+        profiling::scope!("Tokenizer::skip_string_sep");
+        let mut amount = 0;
+        let ch = self.cursor.current();
+        self.cursor.bump();
+        loop {
+            match self.cursor.current() {
+                b'=' => {
+                    amount += 1;
+                    self.cursor.bump();
+                }
+                c if ch == c => return Some(amount),
+                _ => return None,
+            }
+        }
+    }
+
+    #[inline(always)]
+    #[allow(unused_assignments)]
+    fn read_long_string(&mut self, comment: bool, count: usize) -> TokenizeResult<Cow<'a, str>> {
+        // skip 2nd bracket
+        profiling::scope!("Tokenizer::read_long_string");
+        self.cursor.bump();
+        let start = self.cursor.offset;
+        let mut content_end = self.cursor.offset;
+        loop {
+            let content = &self.cursor.input[self.cursor.offset..];
+            if let Some(offset) = content.find(']') {
+                self.cursor.mov(self.cursor.offset + offset);
+                content_end = self.cursor.offset;
+                let sep = self.skip_string_sep();
+                if let Some(sep) = sep {
+                    if sep == count {
+                        self.cursor.bump();
+                        break;
+                    }
+                }
+                content_end = self.cursor.offset;
+            } else if self.cursor.current() == b'\0' {
+                return Err(TokenizeError {
+                    position: self.cursor.position(),
+                    message: if comment {
+                        TokenizeErrorType::UnclosedComment
+                    } else {
+                        TokenizeErrorType::UnclosedString
+                    },
+                });
+            } else {
+                self.cursor.bump();
+            }
+        }
+        Ok(Cow::Borrowed(&self.cursor.input[start..content_end]))
+    }
+
+    pub fn long_string(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::long_string");
+        let start = self.cursor.offset;
+        let sep = self.skip_string_sep();
+        if let Some(sep) = sep {
+            let content = self.read_long_string(true, sep)?;
+            Ok(Token::new(
+                TokenType::Trivia(content),
+                Span::new(start, self.cursor.offset),
+            ))
+        } else {
+            Err(TokenizeError {
+                message: TokenizeErrorType::UnclosedString,
+                position: self.cursor.position(),
+            })
+        }
+    }
+
+    pub fn comment(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::comment");
+        let start = self.cursor.offset;
+
+        self.cursor.mov(self.cursor.offset + 2);
+
+        if self.cursor.current() == b'[' {
+            let sep = self.skip_string_sep();
+            if let Some(sep) = sep {
+                let content = self.read_long_string(true, sep)?;
+                return Ok(Token::new(
+                    TokenType::Trivia(content),
+                    Span::new(start, self.cursor.offset),
+                ));
+            }
+        }
+
+        profiling::scope!("regex matching");
+        let content_start = self.cursor.offset;
+        let src = unsafe { self.cursor.input.get_unchecked(self.cursor.offset..) };
+        let content_end = if let Some(change) = src.find('\n') {
+            self.cursor.offset + change
+        } else {
+            self.cursor.length
+        };
+        self.cursor.mov(content_end);
+
+        Ok(Token::new(
+            TokenType::Trivia(Cow::Borrowed(unsafe {
+                self.cursor.input.get_unchecked(content_start..content_end)
+            })),
+            Span::new(start, self.cursor.offset),
+        ))
+    }
+
+    pub fn shebang(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::shebang");
+        let start = self.cursor.offset;
+
+        self.cursor.mov(self.cursor.offset + 2);
+
+        let content_start = self.cursor.offset;
+        let mut content_end = self.cursor.offset;
+
+        while !matches!(self.cursor.current(), b'\n' | 0) {
+            self.cursor.bump();
+            content_end = self.cursor.offset;
+        }
+
+        if self.cursor.current() == b'\n' {
+            Ok(Token::new(
+                TokenType::Trivia(Cow::Borrowed(unsafe {
+                    self.cursor.input.get_unchecked(content_start..content_end)
+                })),
+                Span::new(start, self.cursor.offset),
+            ))
+        } else {
+            Err(TokenizeError {
+                position: self.cursor.position(),
+                message: TokenizeErrorType::InvalidShebang,
+            })
+        }
+    }
+
+    pub fn hexadecimal(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::hexadecimal");
+        let start = self.cursor.offset;
+        self.cursor.mov(self.cursor.offset + 2);
+
+        if !matches!(self.cursor.current(), b'0'..=b'9'|b'a'..=b'f'|b'A'..=b'F') {
+            unexpected_char!(self)
+        }
+
+        while matches!(self.cursor.current(), b'0'..=b'9'|b'a'..=b'f'|b'A'..=b'F') {
+            self.cursor.bump();
+        }
+
+        unsafe {
+            Ok(Token::new(
+                TokenType::Number(Cow::Borrowed(
+                    self.cursor.input.get_unchecked(start..self.cursor.offset),
+                )),
+                Span::new(start, self.cursor.offset),
+            ))
+        }
+    }
+
+    pub fn number(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::number");
+        let current = self.cursor.current();
+        let peek = self.cursor.peek();
+        if current == b'0' && peek == b'x' {
+            return self.hexadecimal();
+        }
+
+        let start = self.cursor.offset;
+        let has_decimal = current == b'.';
+
+        if has_decimal {
+            self.cursor.bump();
+        }
+
+        while matches!(self.cursor.current(), b'0'..=b'9') {
+            self.cursor.bump();
+        }
+
+        if self.cursor.current() == b'.' && !has_decimal {
+            self.cursor.bump();
+            while matches!(self.cursor.current(), b'0'..=b'9') {
+                self.cursor.bump();
+            }
+        }
+
+        if matches!(self.cursor.current(), b'e' | b'E') {
+            self.cursor.bump();
+            if matches!(self.cursor.current(), b'+' | b'-') {
+                self.cursor.bump();
+            }
+            if !matches!(self.cursor.current(), b'0'..=b'9') {
+                unexpected_char!(self)
+            }
+            self.cursor.bump();
+            while matches!(self.cursor.current(), b'0'..=b'9') {
+                self.cursor.bump();
+            }
+        }
+
+        let end = self.cursor.offset;
+        unsafe {
+            Ok(Token::new(
+                TokenType::Number(Cow::Borrowed(self.cursor.input.get_unchecked(start..end))),
+                Span::new(start, end),
+            ))
+        }
+    }
+
+    pub fn line_string(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::line_string");
+        let quote_char = self.cursor.current();
+        let start = self.cursor.offset;
+        self.cursor.bump();
+
+        let content_start = self.cursor.offset;
+        // {
+        //     let mut current = self.cursor.current();
+        //     let mut offset = 0;
+        //     let last_offset = self.cursor.offset;
+        //     let length = self.cursor.length;
+
+        //     loop {
+        //         let index = offset + last_offset;
+        //         match current {
+        //             b'\\' => {
+        //                 if index + 1 >= length {
+        //                     break;
+        //                 }
+        //                 match self.cursor.bytes[index + 1] {
+        //                     b'a' | b'b' | b'f' | b'n' | b'r' | b't' | b'v' | b'\\' | b'"'
+        //                     | b'\'' => {
+        //                         let new_index = index + 2;
+        //                         current = if new_index >= length {
+        //                             0
+        //                         } else {
+        //                             self.cursor.bytes[new_index]
+        //                         };
+        //                         offset += 2;
+        //                     }
+        //                     _ => break,
+        //                 };
+        //             }
+        //             c if c == quote_char => break,
+        //             b'\0' | b'\n' | b'\r' => break,
+        //             _ => {
+        //                 let new_index = index + 1;
+        //                 current = if new_index >= length {
+        //                     0
+        //                 } else {
+        //                     self.cursor.bytes[new_index]
+        //                 };
+        //                 offset += 1;
+        //             }
+        //         }
+        //     }
+        //     self.cursor.mov(last_offset + offset);
+        // }
+
+        let mut content_end = self.cursor.offset;
+        loop {
+            let current = self.cursor.current();
+            match current {
+                b'\\' => {
+                    self.cursor.bump();
+                    match self.cursor.current() {
+                        b'a' | b'b' | b'f' | b'n' | b'r' | b't' | b'v' | b'\\' | b'"' | b'\'' => {
+                            self.cursor.bump();
+                            content_end = self.cursor.offset;
+                        }
+                        _ => break,
+                    };
+                }
+                c if c == quote_char => break,
+                b'\0' | b'\n' | b'\r' => break,
+                _ => {
+                    self.cursor.bump();
+                    content_end = self.cursor.offset;
+                }
+            };
+        }
+
+        if self.cursor.current() != quote_char {
+            return Err(TokenizeError {
+                message: TokenizeErrorType::UnclosedString,
+                position: self.cursor.position(),
+            });
+        }
+
+        self.cursor.bump();
+
+        unsafe {
+            Ok(Token::new(
+                TokenType::Str(Cow::Borrowed(
+                    self.cursor.input.get_unchecked(content_start..content_end),
+                )),
+                Span::new(start, self.cursor.offset),
+            ))
+        }
+    }
+
+    pub fn whitespace(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::whitespace");
+        let start = self.cursor.offset;
+
+        loop {
+            match self.cursor.current() {
+                b' ' | b'\t' | b'\n' => self.cursor.bump(),
+                b'\r' => {
+                    if self.cursor.peek() != b'\n' {
+                        unexpected_char!(self)
+                    }
+                    self.cursor.bump();
+                    self.cursor.bump();
+                }
+                _ => break,
+            }
+        }
+
+        // let's see the stack overflow then?
+        if self.exclude_trivias {
+            self.advance_token()
+        } else {
+            let end = self.cursor.offset;
+            unsafe {
+                Ok(Token::new(
+                    TokenType::Trivia(Cow::Borrowed(self.cursor.input.get_unchecked(start..end))),
+                    Span::new(start, end),
+                ))
+            }
+        }
+    }
+
+    pub fn identifier(&mut self) -> TokenizeResult<Token<'a>> {
+        profiling::scope!("Tokenizer::identifier");
+        let start = self.cursor.offset;
+
+        while matches!(self.cursor.current(), b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9') {
+            self.cursor.bump();
+        }
+
+        // parsing symbols, because why not?
+        let end = self.cursor.offset;
+        let str = unsafe { self.cursor.input.get_unchecked(start..end) };
+
+        profiling::scope!("SymbolType::from_str check");
+        if let Ok(sym) = KeywordType::from_str(str) {
+            Ok(Token::new(TokenType::Keyword(sym), Span::new(start, end)))
+        } else {
+            Ok(Token::new(
+                TokenType::Name(Cow::Borrowed(str)),
+                Span::new(start, end),
+            ))
+        }
+    }
+}

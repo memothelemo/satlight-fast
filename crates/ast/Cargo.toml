@@ -1,0 +1,11 @@
+[package]
+name = "satlight_ast"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+derive_more = { version = "*" }
+satlight_common = { path = "../common" }
+satlight_macros = { path = "../macros" }
+serde = { version = "1", features = ["derive"], optional = true }
+smol_str = "*"

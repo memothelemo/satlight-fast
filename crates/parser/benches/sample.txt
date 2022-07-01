@@ -1,0 +1,3 @@
+local that = function()
+    print("Hello world!")
+end
