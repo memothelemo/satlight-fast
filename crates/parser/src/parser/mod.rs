@@ -146,7 +146,8 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn table(&mut self) -> ParseResult<ast::TableConstructor> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_table(&mut self) -> ParseResult<ast::TableConstructor> {
         let start_brace = if let Some(token) = self.next_token()? {
             token.span()
         } else {
@@ -162,7 +163,7 @@ impl<'a> Parser<'a> {
             match peek_kind!(self) {
                 Some((TokenType::Symbol(SymbolType::OpenBracket), start)) => {
                     self.next_token()?;
-                    let expr = self.expr()?;
+                    let expr = self.parse_expr()?;
                     if !is_token!(self, TokenType::Symbol(SymbolType::CloseBracket)) {
                         expect_err!(self, "]")
                     }
@@ -171,7 +172,7 @@ impl<'a> Parser<'a> {
                         expect_err!(self, "=")
                     }
                     self.next_token()?;
-                    let value = self.expr()?;
+                    let value = self.parse_expr()?;
                     fields.push(ast::TableField::Computed {
                         span: start.with_end(closing.end()),
                         key: Box::new(expr),
@@ -188,17 +189,17 @@ impl<'a> Parser<'a> {
                     {
                         self.next_token()?;
                         self.next_token()?;
-                        let value = self.expr()?;
+                        let value = self.parse_expr()?;
                         fields.push(ast::TableField::Named {
                             span: span.with_end(value.span().unwrap().end()),
                             key: ast::Name::new(span, n),
                             value: Box::new(value),
                         });
                     } else {
-                        fields.push(ast::TableField::Value(Box::new(self.expr()?)));
+                        fields.push(ast::TableField::Value(Box::new(self.parse_expr()?)));
                     }
                 }
-                _ => fields.push(ast::TableField::Value(Box::new(self.expr()?))),
+                _ => fields.push(ast::TableField::Value(Box::new(self.parse_expr()?))),
             };
 
             match peek_kind!(self, no_span) {
@@ -220,7 +221,8 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn name(&mut self) -> ParseResult<ast::Name> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_name(&mut self) -> ParseResult<ast::Name> {
         if let Some(TokenType::Name(n)) = peek_kind!(self, no_span) {
             let n = n.clone();
             Ok(ast::Name::new(self.next_token()?.unwrap().span(), n.into()))
@@ -230,12 +232,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Use this if you really need one or more expressions
-    pub fn exprlist(&mut self) -> ParseResult<Vec<ast::Expr>> {
-        let mut exprs = vec![self.expr()?];
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_exprlist(&mut self) -> ParseResult<Vec<ast::Expr>> {
+        let mut exprs = vec![self.parse_expr()?];
         while let Some(TokenType::Symbol(SymbolType::Comma)) = peek_kind!(self, no_span) {
             self.next_token()?;
             let stop_loop = is_token!(self, TokenType::Symbol(SymbolType::DotDotDot));
-            exprs.push(self.expr()?);
+            exprs.push(self.parse_expr()?);
             if stop_loop {
                 break;
             }
@@ -243,13 +246,14 @@ impl<'a> Parser<'a> {
         Ok(exprs)
     }
 
-    fn call_args_parens(&mut self, left_span: Span) -> ParseResult<ast::CallArgs> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    fn parse_call_args_parens(&mut self, left_span: Span) -> ParseResult<ast::CallArgs> {
         self.next_token()?;
         let list =
             if let Some(TokenType::Symbol(SymbolType::CloseParen)) = peek_kind!(self, no_span) {
                 Vec::new()
             } else {
-                self.exprlist()?
+                self.parse_exprlist()?
             };
 
         if !list.is_empty() && !is_token!(self, TokenType::Symbol(SymbolType::CloseParen)) {
@@ -262,13 +266,14 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn call_args(&mut self) -> ParseResult<ast::CallArgs> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_call_args(&mut self) -> ParseResult<ast::CallArgs> {
         match peek_kind!(self) {
             Some((TokenType::Symbol(SymbolType::OpenParen), left_span)) => {
-                self.call_args_parens(left_span)
+                self.parse_call_args_parens(left_span)
             }
             Some((TokenType::Symbol(SymbolType::OpenBrace), ..)) => {
-                Ok(ast::CallArgs::Table(self.table()?))
+                Ok(ast::CallArgs::Table(self.parse_table()?))
             }
             Some((TokenType::Str(str), span)) => {
                 let str: ast::SmolStr = str.into();
@@ -281,11 +286,12 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn prefix_expr(&mut self) -> ParseResult<ast::Expr> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_prefix_expr(&mut self) -> ParseResult<ast::Expr> {
         Ok(match peek_kind!(self) {
             Some((TokenType::Symbol(SymbolType::OpenParen), left_span)) => {
                 self.next_token()?;
-                let expr = self.expr()?;
+                let expr = self.parse_expr()?;
                 if !is_token!(self, TokenType::Symbol(SymbolType::CloseParen)) {
                     expect_err!(self, ")")
                 }
@@ -305,19 +311,20 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn primaryexpr(&mut self) -> ParseResult<ast::Expr> {
-        let primary = self.prefix_expr()?;
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_primary_expr(&mut self) -> ParseResult<ast::Expr> {
+        let primary = self.parse_prefix_expr()?;
         let mut suffixes: Vec<ast::Suffix> = Vec::new();
         loop {
             match peek_kind!(self) {
                 Some((TokenType::Symbol(SymbolType::OpenParen), left_span)) => {
                     suffixes.push(ast::Suffix::Call(ast::Call::Args(
-                        self.call_args_parens(left_span)?,
+                        self.parse_call_args_parens(left_span)?,
                     )));
                 }
                 Some((TokenType::Symbol(SymbolType::OpenBracket), left_span)) => {
                     self.next_token()?;
-                    let expr = self.expr()?;
+                    let expr = self.parse_expr()?;
                     if !is_token!(self, TokenType::Symbol(SymbolType::CloseBracket)) {
                         expect_err!(self, "]");
                     }
@@ -328,16 +335,16 @@ impl<'a> Parser<'a> {
                 }
                 Some((TokenType::Symbol(SymbolType::Dot), dot)) => {
                     self.next_token()?;
-                    let indexer = self.name()?;
+                    let indexer = self.parse_name()?;
                     suffixes.push(ast::Suffix::Index(ast::SuffixIndex::Named { dot, indexer }));
                 }
                 Some((TokenType::Symbol(SymbolType::Colon), colon)) => {
                     self.next_token()?;
-                    let indexer = self.name()?;
+                    let indexer = self.parse_name()?;
                     suffixes.push(ast::Suffix::Call(ast::Call::Method(ast::MethodCall::new(
                         colon,
                         indexer,
-                        Box::new(self.call_args()?),
+                        Box::new(self.parse_call_args()?),
                     ))))
                 }
                 Some((TokenType::Str(str), span)) => {
@@ -348,7 +355,7 @@ impl<'a> Parser<'a> {
                     ))));
                 }
                 Some((TokenType::Symbol(SymbolType::OpenBrace), ..)) => suffixes.push(
-                    ast::Suffix::Call(ast::Call::Args(ast::CallArgs::Table(self.table()?))),
+                    ast::Suffix::Call(ast::Call::Args(ast::CallArgs::Table(self.parse_table()?))),
                 ),
                 _ => break,
             }
@@ -363,7 +370,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn simple_expr(&mut self) -> ParseResult<ast::Expr> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_simple_expr(&mut self) -> ParseResult<ast::Expr> {
         Ok(match peek_kind!(self) {
             Some((TokenType::Str(str), span)) => {
                 let str: ast::SmolStr = str.into();
@@ -385,11 +393,11 @@ impl<'a> Parser<'a> {
             Some((TokenType::Keyword(KeywordType::Function), span)) => {
                 self.next_token()?;
                 ast::Expr::Literal(satlight_ast::Literal::Function(
-                    self.anynomous_function(span)?,
+                    self.parse_anynomous_function(span)?,
                 ))
             }
             Some((TokenType::Symbol(SymbolType::OpenBrace), ..)) => {
-                ast::Expr::Literal(ast::Literal::Table(self.table()?))
+                ast::Expr::Literal(ast::Literal::Table(self.parse_table()?))
             }
             Some((TokenType::Symbol(SymbolType::DotDotDot), span)) => {
                 if self.has_varargs {
@@ -407,22 +415,24 @@ impl<'a> Parser<'a> {
                 self.next_token()?;
                 ast::Expr::Literal(ast::Literal::Number(ast::Number::new(span, n)))
             }
-            _ => return self.primaryexpr(),
+            _ => return self.parse_primary_expr(),
         })
     }
 
-    pub fn partexpr(&mut self) -> ParseResult<ast::Expr> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_non_complex_expr(&mut self) -> ParseResult<ast::Expr> {
         Ok(match self.unop().ok() {
             Some(op) => {
-                let expr = self.subexpr(op.kind().order())?;
+                let expr = self.parse_complex_expr(op.kind().order())?;
                 ast::Expr::Unary(ast::Unary::new(op, Box::new(expr)))
             }
-            None => self.simple_expr()?,
+            None => self.parse_simple_expr()?,
         })
     }
 
-    pub fn subexpr(&mut self, min_precedence: usize) -> ParseResult<ast::Expr> {
-        let mut expr = self.partexpr()?;
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_complex_expr(&mut self, min_precedence: usize) -> ParseResult<ast::Expr> {
+        let mut expr = self.parse_non_complex_expr()?;
         while let Some(binop) = self.binop().ok() {
             let kind = binop.kind();
             let order = kind.order();
@@ -431,7 +441,7 @@ impl<'a> Parser<'a> {
             }
             self.next_token()?;
             let is_right_associative = kind.is_right_associative();
-            let right = self.subexpr(if is_right_associative {
+            let right = self.parse_complex_expr(if is_right_associative {
                 order
             } else {
                 order + 1
@@ -441,29 +451,28 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    pub fn expr(&mut self) -> ParseResult<ast::Expr> {
-        self.subexpr(1)
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_expr(&mut self) -> ParseResult<ast::Expr> {
+        self.parse_complex_expr(1)
     }
 }
 
 impl<'a> Parser<'a> {
-    fn function_params(&mut self) -> ParseResult<Vec<ast::FunctionParam>> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    fn parse_function_params(&mut self) -> ParseResult<Vec<ast::FunctionParam>> {
         let mut params = Vec::new();
         expect_token!(self, TokenType::Symbol(SymbolType::OpenParen), "(");
         if !is_token!(self, TokenType::Symbol(SymbolType::CloseParen)) {
-            let mut current_param = self.function_param()?;
+            let mut current_param = self.parse_function_param()?;
             while is_token!(self, TokenType::Symbol(SymbolType::Comma)) {
                 if matches!(current_param, ast::FunctionParam::Varargs(..)) {
-                    self.has_varargs = true;
                     break;
                 }
                 params.push(current_param);
                 self.tokens.next();
-                current_param = self.function_param()?;
+                current_param = self.parse_function_param()?;
             }
-            if !matches!(current_param, ast::FunctionParam::Varargs(..)) {
-                self.has_varargs = false;
-            }
+            self.has_varargs = matches!(current_param, ast::FunctionParam::Varargs(..));
             params.push(current_param);
         } else {
             self.has_varargs = false;
@@ -472,10 +481,14 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    fn anynomous_function(&mut self, start_span: Span) -> ParseResult<ast::AnynomousFunction> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    fn parse_anynomous_function(
+        &mut self,
+        start_span: Span,
+    ) -> ParseResult<ast::AnynomousFunction> {
         let prev_varargs = self.has_varargs;
-        let params = self.function_params()?;
-        let body = self.block(false)?;
+        let params = self.parse_function_params()?;
+        let body = self.parse_block(false)?;
         expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
         self.has_varargs = prev_varargs;
         Ok(ast::AnynomousFunction::new(
@@ -485,17 +498,19 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn name_list(&mut self) -> ParseResult<Vec<ast::Name>> {
-        let mut names = vec![self.name()?];
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    fn parse_name_list(&mut self) -> ParseResult<Vec<ast::Name>> {
+        let mut names = vec![self.parse_name()?];
         while let Some(TokenType::Symbol(SymbolType::Comma)) = peek_kind!(self, no_span) {
             self.next_token()?;
-            names.push(self.name()?);
+            names.push(self.parse_name()?);
         }
         Ok(names)
     }
 
-    fn value_assign_name(&mut self) -> ParseResult<ast::ValueAssignName> {
-        match self.prefix_expr()? {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    fn parse_value_assign_name(&mut self) -> ParseResult<ast::ValueAssignName> {
+        match self.parse_primary_expr()? {
             ast::Expr::Suffixed(suffixed) => Ok(ast::ValueAssignName::Suffixed(suffixed)),
             ast::Expr::Literal(ast::Literal::Name(n)) => Ok(ast::ValueAssignName::Name(n)),
             _ => expect_err!(self, "assign name"),
@@ -504,8 +519,9 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn exprstmt(&mut self) -> ParseResult<ast::Stmt> {
-        let suffixed = self.primaryexpr()?;
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_expr_stmt(&mut self) -> ParseResult<ast::Stmt> {
+        let suffixed = self.parse_primary_expr()?;
 
         // assignment or call?
         let first_suffix = if let ast::Expr::Suffixed(suffixed) = suffixed {
@@ -535,7 +551,7 @@ impl<'a> Parser<'a> {
             Some(TokenType::Symbol(SymbolType::Comma))
         ) {
             self.tokens.next();
-            names.push(self.value_assign_name()?);
+            names.push(self.parse_value_assign_name()?);
         }
 
         if !matches!(
@@ -546,7 +562,7 @@ impl<'a> Parser<'a> {
         }
         self.next_token()?;
 
-        let rhs = self.exprlist()?;
+        let rhs = self.parse_exprlist()?;
         Ok(ast::Stmt::ValueAssign(ast::ValueAssign::new(
             start_span.with_end(rhs.last().unwrap().span().unwrap().end()),
             names,
@@ -555,15 +571,16 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn local_var(&mut self, span: Span) -> ParseResult<ast::LocalAssign> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_local_assign(&mut self, span: Span) -> ParseResult<ast::LocalAssign> {
         let mut exprs = None;
-        let names = self.name_list()?;
+        let names = self.parse_name_list()?;
         if matches!(
             peek_kind!(self, no_span),
             Some(TokenType::Symbol(SymbolType::Equal))
         ) {
             self.next_token()?;
-            exprs = Some(self.exprlist()?);
+            exprs = Some(self.parse_exprlist()?);
         }
 
         let last_span = exprs
@@ -579,26 +596,28 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn function_param(&mut self) -> ParseResult<ast::FunctionParam> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    fn parse_function_param(&mut self) -> ParseResult<ast::FunctionParam> {
         if is_token!(self, TokenType::Symbol(SymbolType::DotDotDot)) {
             Ok(ast::FunctionParam::Varargs(
                 self.tokens.next().unwrap().span(),
             ))
         } else {
-            Ok(ast::FunctionParam::Name(self.name()?))
+            Ok(ast::FunctionParam::Name(self.parse_name()?))
         }
     }
 
     #[inline(always)]
-    pub fn local_function(&mut self, span: Span) -> ParseResult<ast::LocalFunction> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_local_function(&mut self, span: Span) -> ParseResult<ast::LocalFunction> {
         self.next_token()?;
 
-        let name = self.name()?;
+        let name = self.parse_name()?;
 
         let prev_varargs = self.has_varargs;
-        let params = self.function_params()?;
+        let params = self.parse_function_params()?;
 
-        let body = self.block(false)?;
+        let body = self.parse_block(false)?;
         expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
         self.has_varargs = prev_varargs;
 
@@ -611,25 +630,31 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn local_lookalikes(&mut self, span: Span) -> ParseResult<ast::Stmt> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_local_lookalikes(&mut self, span: Span) -> ParseResult<ast::Stmt> {
         if let Some(TokenType::Keyword(KeywordType::Function)) = peek_kind!(self, no_span) {
-            Ok(ast::Stmt::LocalFunction(self.local_function(span)?))
+            Ok(ast::Stmt::LocalFunction(self.parse_local_function(span)?))
         } else {
-            Ok(ast::Stmt::LocalAssign(self.local_var(span)?))
+            Ok(ast::Stmt::LocalAssign(self.parse_local_assign(span)?))
         }
     }
 
     #[inline(always)]
-    pub fn generic_for(&mut self, span: Span, name: ast::Name) -> ParseResult<ast::GenericFor> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_generic_for(
+        &mut self,
+        span: Span,
+        name: ast::Name,
+    ) -> ParseResult<ast::GenericFor> {
         let mut names = vec![name];
         while is_token!(self, TokenType::Symbol(SymbolType::Comma)) {
             self.tokens.next();
-            names.push(self.name()?);
+            names.push(self.parse_name()?);
         }
         expect_token!(self, TokenType::Keyword(KeywordType::In), "in");
-        let exprlist = self.exprlist()?;
+        let exprlist = self.parse_exprlist()?;
         expect_token!(self, TokenType::Keyword(KeywordType::Do), "do");
-        let block = self.block(true)?;
+        let block = self.parse_block(true)?;
         let end_span = self.peek_token()?.map(|v| v.span());
         expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
         Ok(ast::GenericFor::new(
@@ -641,19 +666,24 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn numeric_for(&mut self, span: Span, name: ast::Name) -> ParseResult<ast::NumericFor> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_numeric_for(
+        &mut self,
+        span: Span,
+        name: ast::Name,
+    ) -> ParseResult<ast::NumericFor> {
         self.next_token()?;
-        let start = self.expr()?;
+        let start = self.parse_expr()?;
         expect_token!(self, TokenType::Symbol(SymbolType::Comma), ",");
-        let end = self.expr()?;
+        let end = self.parse_expr()?;
         let step = if is_token!(self, TokenType::Symbol(SymbolType::Comma)) {
             self.next_token()?;
-            Some(self.expr()?)
+            Some(self.parse_expr()?)
         } else {
             None
         };
         expect_token!(self, TokenType::Keyword(KeywordType::Do), "do");
-        let block = self.block(true)?;
+        let block = self.parse_block(true)?;
         let end_span = self.peek_token()?.map(|v| v.span());
         expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
         Ok(ast::NumericFor::new(
@@ -667,22 +697,24 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn for_lookalikes(&mut self, span: Span) -> ParseResult<ast::Stmt> {
-        let name = self.name()?;
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_for_lookalikes(&mut self, span: Span) -> ParseResult<ast::Stmt> {
+        let name = self.parse_name()?;
         match peek_kind!(self, no_span) {
             Some(TokenType::Symbol(SymbolType::Equal)) => {
-                Ok(ast::Stmt::NumericFor(self.numeric_for(span, name)?))
+                Ok(ast::Stmt::NumericFor(self.parse_numeric_for(span, name)?))
             }
-            _ => Ok(ast::Stmt::GenericFor(self.generic_for(span, name)?)),
+            _ => Ok(ast::Stmt::GenericFor(self.parse_generic_for(span, name)?)),
         }
     }
 
     #[inline(always)]
-    pub fn if_stmt_chain(&mut self) -> ParseResult<ast::IfStmtChain> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_if_stmt_chain(&mut self) -> ParseResult<ast::IfStmtChain> {
         let span = self.tokens.next().unwrap().span();
-        let condition = self.expr()?;
+        let condition = self.parse_expr()?;
         expect_token!(self, TokenType::Keyword(KeywordType::Then), "then");
-        let block = self.block(self.is_in_loop)?;
+        let block = self.parse_block(self.is_in_loop)?;
         Ok(ast::IfStmtChain::new(
             span.with_end(block.span().end()),
             condition,
@@ -691,17 +723,18 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn if_stmt(&mut self, start_span: Span) -> ParseResult<ast::IfStmt> {
-        let condition = self.expr()?;
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_if_stmt(&mut self, start_span: Span) -> ParseResult<ast::IfStmt> {
+        let condition = self.parse_expr()?;
         expect_token!(self, TokenType::Keyword(KeywordType::Then), "then");
-        let block = self.block(self.is_in_loop)?;
+        let block = self.parse_block(self.is_in_loop)?;
         let mut chains = Vec::new();
         while is_token!(self, TokenType::Keyword(KeywordType::ElseIf)) {
-            chains.push(self.if_stmt_chain()?);
+            chains.push(self.parse_if_stmt_chain()?);
         }
         let else_block = if is_token!(self, TokenType::Keyword(KeywordType::Else)) {
             self.next_token()?;
-            Some(self.block(self.is_in_loop)?)
+            Some(self.parse_block(self.is_in_loop)?)
         } else {
             None
         };
@@ -717,19 +750,20 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn function_assign_name(&mut self) -> ParseResult<ast::FunctionAssignName> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_function_assign_name(&mut self) -> ParseResult<ast::FunctionAssignName> {
         let mut method_indexer = None;
-        let mut names = vec![self.name()?];
+        let mut names = vec![self.parse_name()?];
         loop {
             match peek_kind!(self, no_span) {
                 Some(TokenType::Symbol(SymbolType::Colon)) => {
                     self.tokens.next();
-                    method_indexer = Some(self.name()?);
+                    method_indexer = Some(self.parse_name()?);
                     break;
                 }
                 Some(TokenType::Symbol(SymbolType::Dot)) => {
                     self.tokens.next();
-                    names.push(self.name()?);
+                    names.push(self.parse_name()?);
                 }
                 _ => break,
             }
@@ -738,11 +772,12 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    pub fn function_stmt(&mut self, start_span: Span) -> ParseResult<ast::FunctionAssign> {
-        let name = self.function_assign_name()?;
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_function_stmt(&mut self, start_span: Span) -> ParseResult<ast::FunctionAssign> {
+        let name = self.parse_function_assign_name()?;
         let prev_varargs = self.has_varargs;
-        let params = self.function_params()?;
-        let body = self.block(false)?;
+        let params = self.parse_function_params()?;
+        let body = self.parse_block(false)?;
         let end_span = self.peek_token()?.map(|v| v.span());
         expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
         self.has_varargs = prev_varargs;
@@ -757,7 +792,8 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn last_stmt(&mut self) -> ParseResult<ast::LastStmt> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_last_stmt(&mut self) -> ParseResult<ast::LastStmt> {
         match peek_kind!(self, no_span) {
             Some(TokenType::Keyword(KeywordType::Break)) => {
                 if self.is_in_loop {
@@ -776,7 +812,7 @@ impl<'a> Parser<'a> {
                 {
                     Vec::new()
                 } else {
-                    self.exprlist()?
+                    self.parse_exprlist()?
                 };
                 Ok(ast::LastStmt::Return(ast::Return::new(token, exprlist)))
             }
@@ -784,19 +820,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn stmt(&mut self) -> ParseResult<ast::Stmt> {
+    #[cfg_attr(feature = "full_profile", profiling::function)]
+    pub fn parse_stmt(&mut self) -> ParseResult<ast::Stmt> {
         let stmt = match peek_kind!(self, no_span) {
             Some(TokenType::Keyword(KeywordType::If)) => {
                 let span = self.peek_token()?.unwrap().span();
                 self.tokens.next();
-                Ok(ast::Stmt::IfStmt(self.if_stmt(span)?))
+                Ok(ast::Stmt::IfStmt(self.parse_if_stmt(span)?))
             }
             Some(TokenType::Keyword(KeywordType::While)) => {
                 let span = self.peek_token()?.unwrap().span();
                 self.tokens.next();
-                let condition = self.expr()?;
+                let condition = self.parse_expr()?;
                 expect_token!(self, TokenType::Keyword(KeywordType::Do), "do");
-                let block = self.block(true)?;
+                let block = self.parse_block(true)?;
                 let end_span = self.peek_token()?.map(|v| v.span());
                 expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
                 Ok(ast::Stmt::While(ast::WhileStmt::new(
@@ -808,7 +845,7 @@ impl<'a> Parser<'a> {
             Some(TokenType::Keyword(KeywordType::Do)) => {
                 let span = self.peek_token()?.unwrap().span();
                 self.tokens.next();
-                let block = self.block(self.is_in_loop)?;
+                let block = self.parse_block(self.is_in_loop)?;
                 let end_span = self.peek_token()?.map(|v| v.span());
                 expect_token!(self, TokenType::Keyword(KeywordType::End), "end");
                 Ok(ast::Stmt::Do(ast::DoStmt::new(
@@ -818,14 +855,14 @@ impl<'a> Parser<'a> {
             }
             Some(TokenType::Keyword(KeywordType::For)) => {
                 let span = self.next_token()?.unwrap().span();
-                self.for_lookalikes(span)
+                self.parse_for_lookalikes(span)
             }
             Some(TokenType::Keyword(KeywordType::Repeat)) => {
                 let span = self.peek_token()?.unwrap().span();
                 self.tokens.next();
-                let block = self.block(true)?;
+                let block = self.parse_block(true)?;
                 expect_token!(self, TokenType::Keyword(KeywordType::Until), "until");
-                let condition = self.expr()?;
+                let condition = self.parse_expr()?;
                 Ok(ast::Stmt::Repeat(ast::RepeatStmt::new(
                     span.with_end(condition.span().unwrap().end()),
                     condition,
@@ -835,14 +872,14 @@ impl<'a> Parser<'a> {
             Some(TokenType::Keyword(KeywordType::Function)) => {
                 let span = self.peek_token()?.unwrap().span();
                 self.tokens.next();
-                Ok(ast::Stmt::FunctionAssign(self.function_stmt(span)?))
+                Ok(ast::Stmt::FunctionAssign(self.parse_function_stmt(span)?))
             }
             Some(TokenType::Keyword(KeywordType::Local)) => {
                 let span = self.peek_token()?.unwrap().span();
                 self.tokens.next();
-                self.local_lookalikes(span)
+                self.parse_local_lookalikes(span)
             }
-            _ => self.exprstmt(),
+            _ => self.parse_expr_stmt(),
         }?;
         if is_token!(self, TokenType::Symbol(SymbolType::Semicolon)) {
             self.tokens.next();
@@ -850,6 +887,7 @@ impl<'a> Parser<'a> {
         Ok(stmt)
     }
 
+    #[cfg_attr(feature = "full_profile", profiling::function)]
     fn is_token_last_stmt_part(&mut self) -> ParseResult<bool> {
         Ok(matches!(
             peek_kind!(self, no_span),
@@ -864,19 +902,20 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    pub fn block(&mut self, do_loop: bool) -> ParseResult<ast::Block> {
+    #[profiling::function]
+    pub fn parse_block(&mut self, do_loop: bool) -> ParseResult<ast::Block> {
         let mut stmts = Vec::<ast::Stmt>::new();
         let last_loop = self.is_in_loop;
         self.is_in_loop = do_loop;
         let start = self.peek_token()?.map(|v| v.span().start()).unwrap_or(0);
         while !self.is_token_last_stmt_part()? {
-            stmts.push(self.stmt()?);
+            stmts.push(self.parse_stmt()?);
         }
         let last_stmt = if matches!(
             peek_kind!(self, no_span),
             Some(TokenType::Keyword(KeywordType::Break | KeywordType::Return))
         ) {
-            let stmt = self.last_stmt()?;
+            let stmt = self.parse_last_stmt()?;
             if is_token!(self, TokenType::Symbol(SymbolType::Semicolon)) {
                 self.tokens.next();
             }
@@ -889,9 +928,10 @@ impl<'a> Parser<'a> {
         Ok(ast::Block::new(Span::new(start, end), stmts, last_stmt))
     }
 
-    pub fn ast(&mut self) -> Result<ast::Ast, ParseError> {
+    #[profiling::function]
+    pub fn parse_ast(&mut self) -> Result<ast::Ast, ParseError> {
         self.has_varargs = true;
-        match self.block(false) {
+        match self.parse_block(false) {
             // hold up! make sure it doesn't leave anything there!
             Ok(block) if self.peek_token()?.is_none() => Ok(ast::Ast::new(block)),
             Err(Some(err)) => Err(err),

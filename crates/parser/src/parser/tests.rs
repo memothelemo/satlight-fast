@@ -10,7 +10,7 @@ mod scripts {
             fn $name() {
                 let contents = include_str!(concat!("../scripts/", $path));
                 let mut parser = Parser::new(Tokens::new(contents, true));
-                if let Err(err) = parser.ast() {
+                if let Err(err) = parser.parse_ast() {
                     eprintln!("{err:#?}");
                     std::process::exit(1);
                 }
@@ -32,7 +32,7 @@ fn pass_cases() {
     for (line, case) in cases {
         eprint!("line #{line}...\t");
         let mut parser = Parser::new(Tokens::new(case, true));
-        if let Err(err) = parser.ast() {
+        if let Err(err) = parser.parse_ast() {
             eprintln!("failed!");
             eprintln!("{err:#?}");
             std::process::exit(1);
@@ -52,7 +52,7 @@ fn fail_cases() {
     for (line, case) in cases {
         eprint!("line #{line}...\t");
         let mut parser = Parser::new(Tokens::new(case, true));
-        if let Ok(ast) = parser.ast() {
+        if let Ok(ast) = parser.parse_ast() {
             eprintln!("failed!");
             eprintln!("{ast:#?}");
             std::process::exit(1);
