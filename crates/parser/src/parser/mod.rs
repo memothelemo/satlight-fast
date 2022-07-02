@@ -5,6 +5,7 @@
 
 use crate::{expect_err, expect_token, is_token, peek_kind, tokenizer::Tokens};
 use ast::{InvalidType, KeywordType, Spanned, SymbolType, TokenType};
+use derive_more::Display;
 use satlight_ast as ast;
 use satlight_common::location::{Position, Span};
 
@@ -20,16 +21,22 @@ pub struct Parser<'a> {
     is_in_loop: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum ParseErrorMessage {
+    #[display(fmt = "invalid usage of break")]
     InvalidBreakUse,
+    #[display(fmt = "invalid usage of varargs")]
     InvalidVarargsUse,
+    #[display(fmt = "expected {_0}")]
     Expected(String),
+    #[display(fmt = "unexpected token {_0}")]
     UnexpectedToken(String),
+    #[display(fmt = "{_0}")]
     Tokenization(InvalidType),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
+#[display(fmt = "{position}: {message}")]
 pub struct ParseError {
     pub position: Position,
     pub message: ParseErrorMessage,
