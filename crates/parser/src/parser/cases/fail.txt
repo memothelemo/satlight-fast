@@ -1,0 +1,214 @@
+;  
+local  
+local;                                 
+local =  
+local end  
+local a, local                         
+local 1  
+local "foo" 
+local a = local  
+local a, b, =  
+local a, b = 1, local  
+local a, b = , local                 
+do  
+end  
+do ; end  
+do 1 end  
+do "foo" end  
+do end do  
+do end end  
+do return return end  
+do break end  
+while  
+while do  
+while =  
+while 1 do  
+while 1 do 2 end  
+while 1 do "foo" end  
+while 1 do ; end  
+while 1 do while  
+while 1 end  
+while 1 2 do  
+while 1 = 2 do  
+while 1 do return return end  
+while 1 do break break end  
+repeat  
+repeat until  
+repeat until local  
+repeat end  
+repeat 1  
+repeat =  
+repeat ; until 1  
+repeat 2 until 1  
+repeat "foo" until 1  
+repeat return return until 0  
+repeat break break until 0  
+for  
+for do  
+for end  
+for 1  
+for a  
+for true  
+for a, in                               
+for a in  
+for a do  
+for a in do  
+for a in b do  
+for a in b end  
+for a in b, do  
+for a in b do 1 end  
+for a in b do "foo" end  
+for a b in  
+for a in b do break break end  
+for a in b do return return end  
+for =  
+for a =  
+for a, b =                              
+for a = do  
+for a = 1, do  
+for a = p, q, do  
+for a = p q do  
+for a = b do end  
+for a = 1, 2, 3, 4 do end  
+for a = 1, 2 do 3 end  
+for a = 1, 2 do "foo" end  
+for a = p, q do break break end  
+for a = 1, 2 do return return end  
+break  
+return return  
+return local  
+return 1,                               
+if  
+elseif  
+else  
+then  
+if then  
+if 1  
+if 1 then  
+if 1 else  
+if 1 then else  
+if 1 then elseif  
+if 1 then elseif 2  
+if 1 then elseif 2 then  
+if 1 then else if 2 then end  
+if 1 then break end  
+if 1 then return return end  
+function  
+function 1  
+function end  
+function a  
+function a end  
+function a( end                         
+function a(1  
+function a("foo" 
+function a(p  
+function a(p,)  
+function a(p q  
+function a(p,q,) end  
+function a(p,q,1  
+function a(p) do  
+function a(p) 1 end  
+function a(p) break end  
+function a(p) return return end  
+function a.(  
+function a.1  
+function a.b, 
+function a.b.(  
+function a:                             
+function a:1  
+function a:b: 
+function a:b. 
+function a(...,  
+local function  
+local function 1  
+local function end  
+local function a  
+local function a end  
+local function a( end  
+local function a(1  
+local function a("foo" 
+local function a(p  
+local function a(p,)  
+local function a(p q  
+local function a(p,q,) end  
+local function a(p,q,1  
+local function a(p) do  
+local function a(p) 1 end  
+local function a(p) break end  
+local function a(p) return return end  
+local function a. 
+local function a: 
+local function a(...,  
+a  
+a,                                      
+a,b,c  
+a,b =  
+0 =  
+"foo" =  
+true =  
+(a) =  
+{} =  
+a:b() =  
+a() =  
+a.b:c() =  
+a[b]() =  
+a = a b  
+a = 1 2  
+a = a = 1  
+a(                                      
+a(1,)  
+1()  
+a.1  
+a.b  
+a[b]                                    
+a.b.(  
+a:b  
+a:1  
+a:b:                                    
+()()  
+a =  
+a = a.b. 
+a = a:b  
+a = ()  
+a = function  
+a = function 1  
+a = function a  
+a = function end  
+a = function( 
+a = function(1  
+a = function(p,)  
+a = function(p q  
+a = function(p,q,1  
+a = function(...,  
+a = function() return ... end  
+a = -  
+a = not  
+a = #  
+a = 1 +  
+a = 1 ..  
+a = 1 * /  
+a = 1 * -  
+a = 1 / not  
+a = 1 / #  
+a = ((1  
+a = ((1 + 2) 
+a = 1) 
+a = 1 ==  
+a = ~= 2  
+a = 1 and  
+a = or 1  
+a = {  
+a = {,}  
+a = {;}  
+a = {,,}  
+a = {;;}  
+a = {{  
+a = { a  
+a = { a= 
+a = { a=,  
+a = { a=;  
+a = { 1, a="foo" 
+a = { [  
+a = { [1  
+a = { [1] 
+a = { [a]=  

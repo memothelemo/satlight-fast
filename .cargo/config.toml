@@ -1,3 +1,6 @@
 [alias]
 pbench = "bench --manifest-path ./crates/parser/Cargo.toml"
 xtask = "run --manifest-path ./xtask/Cargo.toml --"
+
+[build]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]

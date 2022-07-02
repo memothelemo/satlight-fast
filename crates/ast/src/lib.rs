@@ -5,6 +5,8 @@ mod exprs;
 mod stmts;
 mod tokens;
 
+pub use smol_str::SmolStr;
+
 pub use ast::*;
 pub use exprs::*;
 pub use stmts::*;

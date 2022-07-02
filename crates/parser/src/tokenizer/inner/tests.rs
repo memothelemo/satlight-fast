@@ -25,7 +25,7 @@ mod scripts {
         ($name:ident, $path:literal) => {
             #[test]
             fn $name() {
-                let contents = include_str!(concat!("./scripts/", $path));
+                let contents = include_str!(concat!("../../scripts/", $path));
                 for token in tokenize(contents) {
                     if token.token_type().is_invalid() {
                         panic!("{:#?}", token);

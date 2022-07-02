@@ -7,14 +7,13 @@ edition = "2021"
 profiling = ["tracy-client", "profiling/profile-with-tracy"]
 
 [dependencies]
-derive_more = { version = "*" }
-lazy_static = "*"
+backtrace = "0.3.65"
+derive_more = "*"
 memchr = "*"
 profiling = { git = "https://github.com/memothelemo/profiling" }
-regex = "1.5.6"
 satlight_ast = { path = "../ast" }
 satlight_common = { path = "../common" }
-smallvec = "1.9.0"
+satlight_macros = { path = "../macros" }
 tracy-client = { git = "https://github.com/memothelemo/rust_tracy_client", optional = true }
 
 [dev-dependencies]

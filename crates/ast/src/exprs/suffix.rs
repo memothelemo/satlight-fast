@@ -1,7 +1,7 @@
 use satlight_common::location::Span;
 use satlight_macros::node;
 
-use crate::{Expr, Name, Str};
+use crate::{Expr, Name, Str, TableConstructor};
 
 #[node]
 pub enum SuffixIndex {
@@ -22,7 +22,7 @@ impl crate::Spanned for SuffixIndex {
 pub enum CallArgs {
     Multiple { parens: Span, exprs: Vec<Expr> },
     Str(Str),
-    // TODO: Table
+    Table(TableConstructor),
 }
 
 impl crate::Spanned for CallArgs {
@@ -30,6 +30,7 @@ impl crate::Spanned for CallArgs {
         match self {
             CallArgs::Multiple { parens, .. } => Some(*parens),
             CallArgs::Str(str) => Some(str.span()),
+            CallArgs::Table(n) => n.span(),
         }
     }
 }

@@ -1,0 +1,309 @@
+local a
+local a;
+local a, b, c
+local a; local b local c;
+local a = 1
+local a local b = a
+local a, b = 1, 2
+local a, b, c = 1, 2, 3
+local a, b, c = 1
+local a = 1, 2, 3
+do end
+do local a, b end
+do local a local b end
+do local a; local b; end
+do local a = 1 end
+do do end end
+do do end; end
+do do do end end end
+do do do end; end; end
+do do do return end end end
+do return end
+while 1 do end
+while 1 do local a end
+while 1 do local a local b end
+while 1 do local a; local b; end
+while true do end
+while 1 do return end
+while 1 do do end end
+while 1 do do return end end
+while 1 do break end
+while 1 do do break end end
+repeat until 0
+repeat until false
+repeat local a until 1
+repeat local a local b until 0
+repeat local a; local b; until 0
+repeat return until 0
+repeat break until 0
+repeat do end until 0
+repeat do return end until 0
+repeat do break end until 0
+for a in b do end
+for a in b do local a local b end
+for a in b do local a; local b; end
+for a, b, c in p do end
+for a, b, c in p, q, r do end
+for a in 1 do end
+for a in true do end
+for a in "foo" do end
+for a in b do break end
+for a in b do do end end
+for a in b do return end
+for a in b do do break end end
+for a in b do do return end end
+for a = p, q do end
+for a = 1, 2 do end
+for a = 1, 2 do local a local b end
+for a = 1, 2 do local a; local b; end
+for a = p, q, r do end
+for a = 1, 2, 3 do end
+for a = p, q do break end
+for a = 1, 2 do return end
+for a = p, q do do end end
+for a = p, q do do break end end
+for a = p, q do do return end end
+return
+return;
+return 1
+return "foo"
+return 1,2,3
+return a,b,c,d
+return 1,2;
+return ...
+return 1,a,...
+if 1 then end
+if 1 then local a end
+if 1 then local a local b end
+if 1 then local a; local b; end
+if 1 then else end
+if 1 then local a else local b end
+if 1 then local a; else local b; end
+if 1 then elseif 2 then end
+if 1 then local a elseif 2 then local b end
+if 1 then local a; elseif 2 then local b; end
+if 1 then elseif 2 then else end
+if 1 then else if 2 then end end
+if 1 then return end
+if 1 then end; if 1 then end;
+function a() end
+function a(p) end
+function a(p,q,r) end
+function a(p) return end
+function a(p) do end end
+function a.b() end
+function a.b.c.d() end
+function a:b() end
+function a.b.c:d() end
+function a(...) end
+function a(p,...) end
+function a(p,q,r,...) end
+function a() local a local b end
+function a() local a; local b; end
+function a() end; function a() end;
+local function a() end
+local function a(p) end
+local function a(p,q,r) end
+local function a(p) return end
+local function a(p) do end end
+local function a(...) end
+local function a(p,...) end
+local function a(p,q,r,...) end
+local function a() local a local b end
+local function a() local a; local b; end
+local function a() end; local function a() end;
+a = 1
+a = 1,2,3
+a,b,c = 1
+a,b,c = 1,2,3
+a.b = 1
+a.b.c = 1
+a[b] = 1
+a[b][c] = 1
+a.b[c] = 1
+a[b].c = 1
+a()
+a(1)
+a(1,2,3)
+a()()
+a.b()
+a[b]()
+a.b.c()
+a[b][c]()
+a[b].c()
+a.b[c]()
+a:b()
+a.b:c()
+a[b]:c()
+a:b():c()
+a:b().c[d]:e()
+a:b()[c].d:e()
+(a)()
+(1)()
+("foo")()
+(true)()
+(a)()()
+(a.b)()
+(a[b])()
+(a).b()
+(a)[b]()
+(a):b()
+(a).b[c]:d()
+(a)[b].c:d()
+(a):b():c()
+(a):b().c[d]:e()
+(a):b()[c].d:e()
+a"foo"
+a[[foo]]
+a.b"foo"
+a[b]"foo"
+a:b"foo"
+a{}
+a.b{}
+a[b]{}
+a:b{}
+a()"foo"
+a"foo"()
+a"foo".b()
+a"foo"[b]()
+a"foo":c()
+a"foo""bar"
+a"foo"{}
+(a):b"foo".c[d]:e"bar"
+(a):b"foo"[c].d:e"bar"
+a(){}
+a{}()
+a{}.b()
+a{}[b]()
+a{}:c()
+a{}"foo"
+a{}{}
+(a):b{}.c[d]:e{}
+(a):b{}[c].d:e{}
+a = a
+a = nil
+a = false
+a = 1
+a = "foo"
+a = [[foo]]
+a = {}
+a = (a)
+a = (nil)
+a = (true)
+a = (1)
+a = ("foo")
+a = ([[foo]])
+a = ({})
+a = a.b
+a = a.b.c
+a = a[b]
+a = a[1]
+a = a["foo"]
+a = a[b][c]
+a = a.b[c]
+a = a[b].c
+a = (a)[b]
+a = (a).c
+a = a()
+a = a.b()
+a = a[b]()
+a = a:b()
+a = (a)()
+a = (a).b()
+a = (a)[b]()
+a = (a):b()
+a = a"foo"
+a = a{}
+a = function() end
+a = function(p) end
+a = function(p,q,r) end
+a = function(...) end
+a = function(p,...) end
+a = function(p,q,r,...) end
+a = ...
+a = a, b, ...
+a = (...)
+a = ..., 1, 2
+a = -10
+a = -"foo"
+a = -a
+a = -nil
+a = -true
+a = -{}
+a = -function() end
+a = -a()
+a = -(a)
+a = not 10
+a = not "foo"
+a = not a
+a = not nil
+a = not true
+a = not {}
+a = not function() end
+a = not a()
+a = not (a)
+a = #10
+a = #"foo"
+a = #a
+a = #nil
+a = #true
+a = #{}
+a = #function() end
+a = #a()
+a = #(a)
+a = 1 + 2; a = 1 - 2
+a = 1 * 2; a = 1 / 2
+a = 1 ^ 2; a = 1 % 2
+a = 1 .. 2
+a = 1 + -2; a = 1 - -2
+a = 1 * not 2; a = 1 / not 2
+a = 1 * #"foo"; a = 1 / #"foo"
+a = 1 + 2 - 3 * 4 / 5 % 6 ^ 7
+a = ((1 + 2) - 3) * (4 / (5 % 6 ^ 7))
+a = (1 + (2 - (3 * (4 / (5 % 6 ^ ((7)))))))
+a = a + b - c
+a = "foo" + "bar"
+a = "foo".."bar".."baz"
+a = true + false - nil
+a = {} * {}
+a = function() end / function() end
+a = a() ^ b()
+a = ... % ...
+a = 1 == 2; a = 1 ~= 2
+a = 1 < 2; a = 1 <= 2
+a = 1 > 2; a = 1 >= 2
+a = 1 < 2 < 3
+a = 1 >= 2 >= 3
+a = "foo" == "bar"
+a = "foo" > "bar"
+a = a ~= b
+a = true == false
+a = 1 and 2; a = 1 or 2
+a = 1 and 2 and 3
+a = 1 or 2 or 3
+a = 1 and 2 or 3
+a = a and b or c
+a = a() and (b)() or c.d
+a = "foo" and "bar"
+a = true or false
+a = {} and {} or {}
+a = (1) and ("foo") or (nil)
+a = function() end == function() end
+a = function() end or function() end
+a = {}
+a = {{{}}}
+a = {{},{},{{}},}
+a = { 1 }
+a = { 1, }
+a = { 1; }
+a = { 1, 2 }
+a = { a, b, c, }
+a = { true; false, nil; }
+a = { a.b, a[b]; a:c(), }
+a = { 1 + 2, a > b, "a" or "b" }
+a = { a=1, }
+a = { a=1, b="foo", c=nil }
+a = { 1, a="foo"; b={}, d=true; }
+a = { ["foo"]="bar" }
+a = { [1]=a, [2]=b, }
+a = { true, a=1; ["foo"]="bar", }

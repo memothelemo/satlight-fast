@@ -1,7 +1,7 @@
 use super::Cursor;
 use memchr::memchr;
 use satlight_ast::{InvalidType, KeywordType, SymbolType, Token, TokenType};
-use satlight_common::location::Span;
+use satlight_common::location::{Position, Span};
 use std::{borrow::Cow, str::FromStr};
 
 #[cfg(test)]
@@ -10,8 +10,6 @@ mod tests;
 #[derive(Debug)]
 pub struct Tokenizer<'a> {
     cursor: Cursor<'a>,
-    #[allow(unused)]
-    exclude_trivias: bool,
 }
 
 macro_rules! symbol {
@@ -29,16 +27,25 @@ macro_rules! symbol {
 }
 
 impl<'a> Tokenizer<'a> {
-    pub fn new(input: &'a str, exclude_trivias: bool) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Self {
             cursor: Cursor::new(input),
-            exclude_trivias,
         }
+    }
+
+    #[inline(always)]
+    pub fn position(&self) -> Position {
+        self.cursor.position()
     }
 
     #[inline(always)]
     pub fn is_eof(&self) -> bool {
         self.cursor.is_eof()
+    }
+
+    #[inline(always)]
+    pub fn source(&self) -> &'a str {
+        self.cursor.input
     }
 
     pub fn advance_token(&mut self) -> Token<'a> {

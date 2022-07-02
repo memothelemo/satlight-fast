@@ -28,7 +28,6 @@ symbols! {
     Return => "return",
     Then => "then",
     True => "true",
-    Type => "type",
     Until => "until",
     While => "while",
 }

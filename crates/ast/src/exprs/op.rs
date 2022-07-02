@@ -18,14 +18,13 @@ operators! {
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum BinopKind {
-        Exponent => 10,
-        Multiply => 7,
-        FloorDivision => 7,
-        Divide => 7,
-        Modulo => 7,
-        Add => 6,
-        Subtract => 6,
-        Concat => 5,
+        Exponent => 8,
+        Multiply => 6,
+        Divide => 6,
+        Modulo => 6,
+        Add => 5,
+        Subtract => 5,
+        Concat => 4,
         Equality => 3,
         Inequality => 3,
         GreaterThan => 3,

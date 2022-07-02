@@ -1,6 +1,12 @@
 -- Sourced from https://github.com/MadStudioRoblox/ProfileService/blob/master/ProfileService.lua
 -- Licensed under Apache License 2.0 (https://github.com/MadStudioRoblox/ProfileService/blob/master/LICENSE)
 
+-- Modifications:
+--
+-- Compound operators are not supported by Lua, it will be replaced with
+-- From: hello += 1
+-- To: hello = hello + 1
+
 -- local Madwork = _G.Madwork
 --[[
 {Madwork}
@@ -268,7 +274,7 @@ do
 		end
 
 		self._is_connected = false
-		self._script_signal._listener_count -= 1
+		self._script_signal._listener_count = self._script_signal._listener_count - 1
 
 		if self._script_signal._head == self then
 			self._script_signal._head = self._next
@@ -316,7 +322,7 @@ do
 		setmetatable(script_connection, ScriptConnection)
 
 		self._head = script_connection
-		self._listener_count += 1
+		self._listener_count = self._listener_count + 1
 
 		return script_connection
 
@@ -696,7 +702,7 @@ local function MockUpdateAsync(mock_data_store, profile_store_name, key, transfo
 			mock_entry.Data = transform
 			mock_entry.UserIds = DeepCopyTable(user_ids or {})
 			mock_entry.MetaData = DeepCopyTable(roblox_meta_data or {})
-			mock_entry.VersionId += 1
+			mock_entry.VersionId = mock_entry.VersionId + 1
 			mock_entry.UpdatedTime = epoch_time
 		end
 
@@ -1663,7 +1669,7 @@ function ProfileVersionQuery:NextAsync(_is_stacking) --> [Profile] or nil
 
 		-- Next page item:
 
-		self._query_index += 1
+		self._query_index = self._query_index + 1
 		profile = self._profile_store:ViewProfileAsync(self._profile_key, next_item.Version)
 		is_finished = true
 

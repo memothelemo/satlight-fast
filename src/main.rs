@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use satlight_parser::tokenizer::tokenize;
+use satlight_parser::{parser::Parser, tokenizer::Tokens};
 
 fn main() {
     // #[cfg(feature = "profiling")]
@@ -20,10 +20,12 @@ fn main() {
     //         }
     //     }
     // }
+    let mut parser = Parser::new(Tokens::new(&source, true));
     let now = Instant::now();
-    for _token in tokenize(&source) {}
+    let ast = parser.ast().unwrap();
     let elapsed = now.elapsed();
     println!("{elapsed:.2?}");
+    println!("{ast:#?}");
     // #[cfg(not(debug_assertions))]
     // for _ in 0..50 {
     //     let tokens = tokenize(&source);

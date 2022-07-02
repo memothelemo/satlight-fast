@@ -3,12 +3,14 @@ mod literal;
 mod op;
 mod parentheses;
 mod suffix;
+mod table;
 
 pub use aries::*;
 pub use literal::*;
 pub use op::*;
 pub use parentheses::*;
 pub use suffix::*;
+pub use table::*;
 
 use satlight_macros::node;
 
