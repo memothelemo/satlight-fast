@@ -1,0 +1,6 @@
+cd /sys/devices/system/cpu
+echo performance | tee cpu*/cpufreq/scaling_governor
+
+ondemand or powersave
+
+core_pattern in /proc/sys/kernel/core_pattern

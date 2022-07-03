@@ -1,5 +1,5 @@
 [workspace]
-members = ["./xtask", "./crates/*"]
+members = ["./xtask", "./fuzz", "./crates/*"]
 
 [package]
 name = "satlight"
@@ -7,16 +7,28 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
+all = [
+    "ast",
+    "common",
+    "parser"
+]
+ast = ["satlight_ast"]
+common = ["satlight_common"]
+parser = ["satlight_parser"]
 profiling = [
     "satlight_parser/profiling",
     "profiling/profile-with-tracy",
     "tracy-client",
 ]
+serde = [
+    "satlight_ast/serde",
+    "satlight_common/serde"
+]
 
 [dependencies]
 memchr = "*"
-profiling = { git = "https://github.com/memothelemo/profiling" }
-satlight_ast = { path = "./crates/ast" }
-satlight_common = { path = "./crates/common" }
-satlight_parser = { path = "./crates/parser" }
+profiling = { git = "https://github.com/memothelemo/profiling", optional = true }
+satlight_ast = { path = "./crates/ast", optional = true }
+satlight_common = { path = "./crates/common", optional = true }
+satlight_parser = { path = "./crates/parser", optional = true }
 tracy-client = { git = "https://github.com/memothelemo/rust_tracy_client", optional = true }
